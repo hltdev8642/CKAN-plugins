@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -9,8 +9,13 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>PartManagerPlugin</RootNamespace>
     <AssemblyName>PartManagerPlugin</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <RestorePackages>true</RestorePackages>
+    <!-- CKAN installation directory (where ckan.exe lives) -->
+    <CKANPath Condition="'$(CKANPath)' == ''">C:\Users\jared\Documents\_KSP\_software\CKAN</CKANPath>
+    <!-- Set this to automatically deploy the plugin after build -->
+    <PluginDeployPath Condition="'$(PluginDeployPath)' == ''"></PluginDeployPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -30,10 +35,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ckan, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="ckan">
+      <HintPath>$(CKANPath)\ckan.exe</HintPath>
+      <Private>False</Private>
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\Desktop\ckan.exe</HintPath>
     </Reference>
+    <!-- Autofac and Newtonsoft.Json are merged into ckan.exe via ILMerge -->
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
@@ -65,7 +72,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>xcopy /Y PartManagerPlugin.dll C:\Users\nlight\Desktop\testksp3\CKAN\Plugins\</PostBuildEvent>
+    <PostBuildEvent Condition="'$(PluginDeployPath)' != ''">xcopy /Y "$(TargetPath)" "$(PluginDeployPath)\"</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

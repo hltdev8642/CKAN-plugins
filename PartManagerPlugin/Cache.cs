@@ -1,50 +1,61 @@
 ﻿using System;
 using System.IO;
 using CKAN;
+using CKAN.GUI;
 
 namespace PartManagerPlugin
 {
     public static class Cache
     {
 
-        public static void RemovePartFromCache(string part)
+        private static string GetCachePath()
         {
-            var partManagerPath = Path.Combine(Main.Instance.CurrentInstance.CkanDir(), "PartManager");
-            if (!Directory.Exists(partManagerPath))
-            {
-                Directory.CreateDirectory(partManagerPath);
-            }
+            var ckanDir = Main.Instance?.CurrentInstance?.CkanDir;
+            if (ckanDir == null) return null;
 
-            var cachePath = Path.Combine(partManagerPath, "cache");
+            var cachePath = Path.Combine(ckanDir, "PartManager", "cache");
             if (!Directory.Exists(cachePath))
             {
                 Directory.CreateDirectory(cachePath);
             }
+            return cachePath;
+        }
+
+        private static string GetGameDir()
+        {
+            return Main.Instance?.CurrentInstance?.GameDir;
+        }
+
+        public static void RemovePartFromCache(string part)
+        {
+            var cachePath = GetCachePath();
+            if (cachePath == null) return;
 
             var fullPath = Path.Combine(cachePath, part);
-            File.Delete(fullPath);
+            if (File.Exists(fullPath))
+            {
+                File.Delete(fullPath);
+            }
         }
 
         public static void MovePartToCache(string part)
         {
-            var partManagerPath = Path.Combine(Main.Instance.CurrentInstance.CkanDir(), "PartManager");
-            if (!Directory.Exists(partManagerPath))
-            {
-                Directory.CreateDirectory(partManagerPath);
-            }
+            var gameDir = GetGameDir();
+            var cachePath = GetCachePath();
+            if (gameDir == null || cachePath == null) return;
 
-            var cachePath = Path.Combine(partManagerPath, "cache");
-            if (!Directory.Exists(cachePath))
-            {
-                Directory.CreateDirectory(cachePath);
-            }
+            var fullPath = Path.Combine(gameDir, part);
+            if (!File.Exists(fullPath)) return;
 
-            var fullPath = Path.Combine(Main.Instance.CurrentInstance.GameDir(), part);
             var targetPath = Path.Combine(cachePath, part);
 
             try
             {
-                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(targetPath));
+                var targetDir = Path.GetDirectoryName(targetPath);
+                if (!string.IsNullOrEmpty(targetDir))
+                {
+                    Directory.CreateDirectory(targetDir);
+                }
             }
             catch (Exception) { }
 
@@ -53,24 +64,22 @@ namespace PartManagerPlugin
 
         public static void MovePartFromCache(string part)
         {
-            var partManagerPath = Path.Combine(Main.Instance.CurrentInstance.CkanDir(), "PartManager");
-            if (!Directory.Exists(partManagerPath))
-            {
-                Directory.CreateDirectory(partManagerPath);
-            }
-
-            var cachePath = Path.Combine(partManagerPath, "cache");
-            if (!Directory.Exists(cachePath))
-            {
-                Directory.CreateDirectory(cachePath);
-            }
+            var gameDir = GetGameDir();
+            var cachePath = GetCachePath();
+            if (gameDir == null || cachePath == null) return;
 
             var fullPath = Path.Combine(cachePath, part);
-            var targetPath = Path.Combine(Main.Instance.CurrentInstance.GameDir(), part);
+            if (!File.Exists(fullPath)) return;
+
+            var targetPath = Path.Combine(gameDir, part);
 
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
+                var targetDir = Path.GetDirectoryName(targetPath);
+                if (!string.IsNullOrEmpty(targetDir))
+                {
+                    Directory.CreateDirectory(targetDir);
+                }
             }
             catch (Exception) { }
 

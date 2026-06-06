@@ -4,7 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using Autofac;
 using CKAN;
+using CKAN.GUI;
 using Newtonsoft.Json;
 
 namespace PartManagerPlugin
@@ -28,15 +30,34 @@ namespace PartManagerPlugin
         private bool m_FilterRegex = false;
         private FilterType m_FilterType;
 
+        private RepositoryDataManager m_RepoData;
+        private Registry m_Registry;
+
+        private Registry GetRegistry()
+        {
+            if (m_RepoData == null)
+            {
+                m_RepoData = ServiceLocator.Container.Resolve<RepositoryDataManager>();
+            }
+            if (Main.Instance?.CurrentInstance != null)
+            {
+                m_Registry = RegistryManager.Instance(Main.Instance.CurrentInstance, m_RepoData).registry;
+            }
+            return m_Registry;
+        }
+
         private void LoadConfig()
         {
-            var fullPath = Path.Combine(Main.Instance.CurrentInstance.CkanDir(), ConfigPath);
+            var ckanDir = Main.Instance?.CurrentInstance?.CkanDir;
+            if (ckanDir == null) return;
+
+            var fullPath = Path.Combine(ckanDir, ConfigPath);
             if (!File.Exists(fullPath))
             {
                 return;
             }
 
-            var partManagerPath = Path.Combine(Main.Instance.CurrentInstance.CkanDir(), "PartManager");
+            var partManagerPath = Path.Combine(ckanDir, "PartManager");
             if (!Directory.Exists(partManagerPath))
             {
                 Directory.CreateDirectory(partManagerPath);
@@ -50,18 +71,29 @@ namespace PartManagerPlugin
 
             var json = File.ReadAllText(fullPath);
             PartManagerConfig config = (PartManagerConfig) JsonConvert.DeserializeObject<PartManagerConfig>(json);
-            foreach (var item in config.disabledParts)
+            if (config?.disabledParts != null)
             {
-                m_DisabledParts.Add(item.Key, ConfigNodeReader.FileToConfigNode(Path.Combine(cachePath, item.Key)));
+                foreach (var item in config.disabledParts)
+                {
+                    var configNode = ConfigNodeReader.FileToConfigNode(Path.Combine(cachePath, item.Key));
+                    if (configNode != null)
+                    {
+                        m_DisabledParts.Add(item.Key, configNode);
+                    }
+                }
             }
         }
 
         private void SaveConfig()
         {
-            var fullPath = Path.Combine(Main.Instance.CurrentInstance.CkanDir(), ConfigPath);
-            if (!Directory.Exists(Path.GetDirectoryName(fullPath)))
+            var ckanDir = Main.Instance?.CurrentInstance?.CkanDir;
+            if (ckanDir == null) return;
+
+            var fullPath = Path.Combine(ckanDir, ConfigPath);
+            var directory = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
+                Directory.CreateDirectory(directory);
             }
 
             PartManagerConfig config = new PartManagerConfig();
@@ -86,18 +118,20 @@ namespace PartManagerPlugin
             RefreshInstalledModsList();
         }
 
-        public void OnModChanged(CkanModule module, GUIModChangeType changeType)
+        public void OnModChanged()
         {
-            if (changeType == GUIModChangeType.Update || changeType == GUIModChangeType.Install)
+            // Re-apply disabled parts: if a part .cfg was restored (e.g. after mod update),
+            // move it back to the cache to keep it disabled
+            var gameDir = Main.Instance?.CurrentInstance?.GameDir;
+            if (gameDir == null) return;
+
+            foreach (var disabledPart in m_DisabledParts)
             {
-                var parts = GetInstalledModParts(module.identifier);
-                foreach (var part in parts)
+                var fullPath = Path.Combine(gameDir, disabledPart.Key);
+                if (File.Exists(fullPath))
                 {
-                    if (m_DisabledParts.ContainsKey(part.Key))
-                    {
-                        Cache.RemovePartFromCache(part.Key);
-                        Cache.MovePartToCache(part.Key);
-                    }
+                    Cache.RemovePartFromCache(disabledPart.Key);
+                    Cache.MovePartToCache(disabledPart.Key);
                 }
             }
 
@@ -106,23 +140,28 @@ namespace PartManagerPlugin
 
         private void RefreshInstalledModsList()
         {
-            var installedMods = Main.Instance.CurrentInstance.Registry.Installed();
+            var registry = GetRegistry();
+            if (registry == null) return;
+
+            var installedMods = registry.InstalledModules;
 
             InstalledModsListBox.Items.Clear();
 
             foreach (var mod in installedMods)
             {
-                var parts = GetInstalledModParts(mod.Key);
+                var parts = GetInstalledModParts(mod.identifier);
                 if (parts != null && parts.Any())
                 {
-                    InstalledModsListBox.Items.Add(String.Format("{0} | {1}", mod.Key, mod.Value));
+                    InstalledModsListBox.Items.Add(String.Format("{0} | {1}", mod.identifier, mod.Module.version));
                 }
             }
         }
 
         private Dictionary<string, ConfigNode> GetInstalledModParts(string identifier)
         {
-            var registry = Main.Instance.CurrentInstance.Registry;
+            var registry = GetRegistry();
+            if (registry == null) return null;
+
             var module = registry.InstalledModule(identifier);
 
             if (module == null)
@@ -142,7 +181,7 @@ namespace PartManagerPlugin
 
                 var filename = Path.GetFileName(item);
 
-                if (filename.EndsWith(".cfg"))
+                if (filename.EndsWith(".cfg", StringComparison.OrdinalIgnoreCase))
                 {
                     var configNode = LoadPart(item);
                     if (configNode != null)
@@ -157,12 +196,14 @@ namespace PartManagerPlugin
 
         private ConfigNode LoadPart(string part)
         {
-            var kspDir = Main.Instance.CurrentInstance.GameDir();
-            var fullPath = Path.Combine(kspDir, part);
+            var gameDir = Main.Instance?.CurrentInstance?.GameDir;
+            var ckanDir = Main.Instance?.CurrentInstance?.CkanDir;
+            if (gameDir == null || ckanDir == null) return null;
+
+            var fullPath = Path.Combine(gameDir, part);
             if (!File.Exists(fullPath))
             {
-                var partManagerPath = Path.Combine(Main.Instance.CurrentInstance.CkanDir(), "PartManager");
-                var cachePath = Path.Combine(partManagerPath, "cache");
+                var cachePath = Path.Combine(ckanDir, "PartManager", "cache");
                 fullPath = Path.Combine(cachePath, part);
                 if (!File.Exists(fullPath))
                 {
@@ -234,40 +275,6 @@ namespace PartManagerPlugin
             }
         }
 
-        private bool FilterString(string value)
-        {
-            if (m_Filter == null)
-            {
-                return true;
-            }
-
-            if (value == null)
-            {
-                return false;
-            }
-
-            if (m_Filter.Length == 0)
-            {
-                return true;
-            }
-
-            if (m_FilterRegex)
-            {
-                try
-                {
-                    return Regex.IsMatch(value, m_Filter);
-                }
-                catch (Exception)
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                return value.ToLower().Contains(m_Filter.ToLower());
-            }
-        }
-
         private void PartsGridView_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0)
@@ -314,6 +321,40 @@ namespace PartManagerPlugin
                 m_DisabledParts.Remove(part.Key);
                 Cache.MovePartFromCache(part.Key);
                 SaveConfig();
+            }
+        }
+
+        private bool FilterString(string value)
+        {
+            if (m_Filter == null)
+            {
+                return true;
+            }
+
+            if (value == null)
+            {
+                return false;
+            }
+
+            if (m_Filter.Length == 0)
+            {
+                return true;
+            }
+
+            if (m_FilterRegex)
+            {
+                try
+                {
+                    return Regex.IsMatch(value, m_Filter);
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return value.ToLower().Contains(m_Filter.ToLower());
             }
         }
 
