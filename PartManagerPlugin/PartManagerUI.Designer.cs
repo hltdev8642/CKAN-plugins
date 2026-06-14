@@ -53,6 +53,10 @@
             this.ApplyFilterButton = new System.Windows.Forms.Button();
             this.FilterTypeCombobox = new System.Windows.Forms.ComboBox();
             this.ClearFilterbutton = new System.Windows.Forms.Button();
+            this.CraftFilesListBox = new System.Windows.Forms.ListBox();
+            this.ScanSelectedButton = new System.Windows.Forms.Button();
+            this.CraftFileLabel = new System.Windows.Forms.Label();
+            this.MissingPartLabel = new System.Windows.Forms.Label();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.PartsGridView)).BeginInit();
@@ -65,7 +69,7 @@
             this.groupBox1.Controls.Add(this.InstalledModsListBox);
             this.groupBox1.Location = new System.Drawing.Point(3, 3);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(293, 539);
+            this.groupBox1.Size = new System.Drawing.Size(293, 568);
             this.groupBox1.TabIndex = 0;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Installed mods that contain parts";
@@ -78,7 +82,7 @@
             this.InstalledModsListBox.Location = new System.Drawing.Point(6, 19);
             this.InstalledModsListBox.Name = "InstalledModsListBox";
             this.InstalledModsListBox.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
-            this.InstalledModsListBox.Size = new System.Drawing.Size(281, 511);
+            this.InstalledModsListBox.Size = new System.Drawing.Size(281, 538);
             this.InstalledModsListBox.TabIndex = 0;
             this.InstalledModsListBox.SelectedIndexChanged += new System.EventHandler(this.InstalledModsListBox_SelectedIndexChanged);
             // 
@@ -189,11 +193,15 @@
             this.CraftGroupBox.Controls.Add(this.LookupGithubButton);
             this.CraftGroupBox.Controls.Add(this.LookupSpacedockButton);
             this.CraftGroupBox.Controls.Add(this.LookupCkanButton);
+            this.CraftGroupBox.Controls.Add(this.MissingPartLabel);
             this.CraftGroupBox.Controls.Add(this.MissingPartsListBox);
+            this.CraftGroupBox.Controls.Add(this.CraftFileLabel);
+            this.CraftGroupBox.Controls.Add(this.CraftFilesListBox);
+            this.CraftGroupBox.Controls.Add(this.ScanSelectedButton);
             this.CraftGroupBox.Controls.Add(this.ScanShipsButton);
             this.CraftGroupBox.Location = new System.Drawing.Point(302, 392);
             this.CraftGroupBox.Name = "CraftGroupBox";
-            this.CraftGroupBox.Size = new System.Drawing.Size(628, 150);
+            this.CraftGroupBox.Size = new System.Drawing.Size(628, 175);
             this.CraftGroupBox.TabIndex = 11;
             this.CraftGroupBox.TabStop = false;
             this.CraftGroupBox.Text = "Craft Scanner";
@@ -208,18 +216,68 @@
             this.ScanShipsButton.UseVisualStyleBackColor = true;
             this.ScanShipsButton.Click += new System.EventHandler(this.ScanShipsButton_Click);
             // 
+            // ScanSelectedButton
+            // 
+            this.ScanSelectedButton.Location = new System.Drawing.Point(152, 16);
+            this.ScanSelectedButton.Name = "ScanSelectedButton";
+            this.ScanSelectedButton.Size = new System.Drawing.Size(100, 23);
+            this.ScanSelectedButton.TabIndex = 7;
+            this.ScanSelectedButton.Text = "Scan Selected";
+            this.ScanSelectedButton.UseVisualStyleBackColor = true;
+            this.ScanSelectedButton.Click += new System.EventHandler(this.ScanSelectedButton_Click);
+            // 
+            // CraftStatusLabel
+            // 
+            this.CraftStatusLabel.AutoSize = true;
+            this.CraftStatusLabel.Location = new System.Drawing.Point(258, 21);
+            this.CraftStatusLabel.Name = "CraftStatusLabel";
+            this.CraftStatusLabel.Size = new System.Drawing.Size(94, 13);
+            this.CraftStatusLabel.TabIndex = 6;
+            this.CraftStatusLabel.Text = "Ready (no scan yet)";
+            this.CraftStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // CraftFileLabel
+            // 
+            this.CraftFileLabel.AutoSize = false;
+            this.CraftFileLabel.Location = new System.Drawing.Point(6, 42);
+            this.CraftFileLabel.Name = "CraftFileLabel";
+            this.CraftFileLabel.Size = new System.Drawing.Size(300, 13);
+            this.CraftFileLabel.TabIndex = 12;
+            this.CraftFileLabel.Text = "Craft Files (select, then click Scan Selected):";
+            this.CraftFileLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // CraftFilesListBox
+            // 
+            this.CraftFilesListBox.FormattingEnabled = true;
+            this.CraftFilesListBox.Location = new System.Drawing.Point(6, 56);
+            this.CraftFilesListBox.Name = "CraftFilesListBox";
+            this.CraftFilesListBox.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
+            this.CraftFilesListBox.Size = new System.Drawing.Size(300, 82);
+            this.CraftFilesListBox.TabIndex = 1;
+            this.CraftFilesListBox.SelectedIndexChanged += new System.EventHandler(this.CraftFilesListBox_SelectedIndexChanged);
+            // 
+            // MissingPartLabel
+            // 
+            this.MissingPartLabel.AutoSize = false;
+            this.MissingPartLabel.Location = new System.Drawing.Point(312, 42);
+            this.MissingPartLabel.Name = "MissingPartLabel";
+            this.MissingPartLabel.Size = new System.Drawing.Size(152, 13);
+            this.MissingPartLabel.TabIndex = 13;
+            this.MissingPartLabel.Text = "Missing Parts:";
+            this.MissingPartLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
             // MissingPartsListBox
             // 
             this.MissingPartsListBox.FormattingEnabled = true;
-            this.MissingPartsListBox.Location = new System.Drawing.Point(6, 45);
+            this.MissingPartsListBox.Location = new System.Drawing.Point(312, 56);
             this.MissingPartsListBox.Name = "MissingPartsListBox";
             this.MissingPartsListBox.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
-            this.MissingPartsListBox.Size = new System.Drawing.Size(460, 95);
-            this.MissingPartsListBox.TabIndex = 1;
+            this.MissingPartsListBox.Size = new System.Drawing.Size(152, 82);
+            this.MissingPartsListBox.TabIndex = 8;
             // 
             // LookupCkanButton
             // 
-            this.LookupCkanButton.Location = new System.Drawing.Point(472, 45);
+            this.LookupCkanButton.Location = new System.Drawing.Point(470, 45);
             this.LookupCkanButton.Name = "LookupCkanButton";
             this.LookupCkanButton.Size = new System.Drawing.Size(75, 23);
             this.LookupCkanButton.TabIndex = 2;
@@ -229,7 +287,7 @@
             // 
             // LookupSpacedockButton
             // 
-            this.LookupSpacedockButton.Location = new System.Drawing.Point(550, 45);
+            this.LookupSpacedockButton.Location = new System.Drawing.Point(551, 45);
             this.LookupSpacedockButton.Name = "LookupSpacedockButton";
             this.LookupSpacedockButton.Size = new System.Drawing.Size(75, 23);
             this.LookupSpacedockButton.TabIndex = 3;
@@ -239,7 +297,7 @@
             // 
             // LookupGithubButton
             // 
-            this.LookupGithubButton.Location = new System.Drawing.Point(472, 74);
+            this.LookupGithubButton.Location = new System.Drawing.Point(470, 74);
             this.LookupGithubButton.Name = "LookupGithubButton";
             this.LookupGithubButton.Size = new System.Drawing.Size(75, 23);
             this.LookupGithubButton.TabIndex = 4;
@@ -249,23 +307,13 @@
             // 
             // LookupKerbalxButton
             // 
-            this.LookupKerbalxButton.Location = new System.Drawing.Point(550, 74);
+            this.LookupKerbalxButton.Location = new System.Drawing.Point(551, 74);
             this.LookupKerbalxButton.Name = "LookupKerbalxButton";
             this.LookupKerbalxButton.Size = new System.Drawing.Size(75, 23);
             this.LookupKerbalxButton.TabIndex = 5;
             this.LookupKerbalxButton.Text = "KerbalX";
             this.LookupKerbalxButton.UseVisualStyleBackColor = true;
             this.LookupKerbalxButton.Click += new System.EventHandler(this.LookupKerbalxButton_Click);
-            // 
-            // CraftStatusLabel
-            // 
-            this.CraftStatusLabel.AutoSize = true;
-            this.CraftStatusLabel.Location = new System.Drawing.Point(152, 21);
-            this.CraftStatusLabel.Name = "CraftStatusLabel";
-            this.CraftStatusLabel.Size = new System.Drawing.Size(94, 13);
-            this.CraftStatusLabel.TabIndex = 6;
-            this.CraftStatusLabel.Text = "Ready (no scan yet)";
-            this.CraftStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // FilterTextBox
             // 
@@ -341,7 +389,7 @@
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
             this.Name = "PartManagerUI";
-            this.Size = new System.Drawing.Size(933, 546);
+            this.Size = new System.Drawing.Size(933, 575);
             this.Load += new System.EventHandler(this.PartManagerUI_Load);
             this.groupBox1.ResumeLayout(false);
             this.groupBox2.ResumeLayout(false);
@@ -372,6 +420,10 @@
         private System.Windows.Forms.Button LookupGithubButton;
         private System.Windows.Forms.Button LookupKerbalxButton;
         private System.Windows.Forms.Label CraftStatusLabel;
+        private System.Windows.Forms.ListBox CraftFilesListBox;
+        private System.Windows.Forms.Button ScanSelectedButton;
+        private System.Windows.Forms.Label CraftFileLabel;
+        private System.Windows.Forms.Label MissingPartLabel;
         private System.Windows.Forms.DataGridViewCheckBoxColumn EnabledColumn;
         private System.Windows.Forms.DataGridViewTextBoxColumn TitleColumn;
         private System.Windows.Forms.DataGridViewTextBoxColumn PartNameColumn;

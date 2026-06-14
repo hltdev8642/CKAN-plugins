@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Autofac;
 using CKAN;
@@ -34,6 +35,8 @@ namespace PartManagerPlugin
         private Registry m_Registry;
         private Dictionary<string, List<string>> m_AllCraftParts = new Dictionary<string, List<string>>();
         private Dictionary<string, List<string>> m_MissingParts = new Dictionary<string, List<string>>();
+        private Dictionary<string, string> m_CraftFilePaths = new Dictionary<string, string>();
+        private bool m_ScanInProgress = false;
 
         private Registry GetRegistry()
         {
@@ -417,8 +420,10 @@ namespace PartManagerPlugin
             }
         }
 
-        private void ScanShipsButton_Click(object sender, EventArgs e)
+        private async void ScanShipsButton_Click(object sender, EventArgs e)
         {
+            if (m_ScanInProgress) return;
+
             var gameDir = Main.Instance?.CurrentInstance?.GameDir;
             if (gameDir == null)
             {
@@ -427,34 +432,46 @@ namespace PartManagerPlugin
             }
 
             CraftStatusLabel.Text = "Scanning craft files...";
-            Cursor = Cursors.WaitCursor;
             ScanShipsButton.Enabled = false;
+            ScanSelectedButton.Enabled = false;
+            m_ScanInProgress = true;
 
             try
             {
-                m_AllCraftParts = PartScanner.ScanAllCraftFiles(gameDir);
-                m_MissingParts = PartScanner.FindMissingParts(gameDir, m_AllCraftParts);
-
-                MissingPartsListBox.Items.Clear();
-
-                if (m_MissingParts.Count == 0)
+                // Run heavy scanning on background thread to prevent UI hang
+                var result = await Task.Run(() =>
                 {
-                    CraftStatusLabel.Text = "All parts found! No missing parts detected.";
-                    return;
-                }
+                    // Clear cache so we get fresh GameData scan
+                    PartScanner.ClearCache();
+
+                    var allParts = PartScanner.ScanAllCraftFiles(gameDir, out var filePaths);
+                    var missing = PartScanner.FindMissingParts(gameDir, allParts);
+                    return new { allParts, missing, filePaths };
+                });
+
+                m_AllCraftParts = result.allParts;
+                m_MissingParts = result.missing;
+                m_CraftFilePaths = result.filePaths;
+
+                // Update UI on main thread
+                PopulateCraftFilesList();
+                PopulateMissingPartsList();
 
                 var totalCraft = m_AllCraftParts.Count;
                 var totalMissing = m_MissingParts.Sum(kvp => kvp.Value.Count);
 
-                foreach (var kvp in m_MissingParts)
+                if (totalCraft == 0)
                 {
-                    foreach (var part in kvp.Value)
-                    {
-                        MissingPartsListBox.Items.Add($"[{kvp.Key}] {part}");
-                    }
+                    CraftStatusLabel.Text = "No .craft files found in ships/VAB/ or ships/SPH/. Build some ships in KSP first!";
                 }
-
-                CraftStatusLabel.Text = $"Scanned {totalCraft} craft files, found {totalMissing} missing parts across {m_MissingParts.Count} craft files.";
+                else if (totalMissing == 0)
+                {
+                    CraftStatusLabel.Text = $"All parts found! Scanned {totalCraft} craft files, no missing parts detected.";
+                }
+                else
+                {
+                    CraftStatusLabel.Text = $"Scanned {totalCraft} craft files, found {totalMissing} missing parts across {m_MissingParts.Count} craft files.";
+                }
             }
             catch (Exception ex)
             {
@@ -462,9 +479,185 @@ namespace PartManagerPlugin
             }
             finally
             {
-                Cursor = Cursors.Default;
                 ScanShipsButton.Enabled = true;
+                ScanSelectedButton.Enabled = true;
+                m_ScanInProgress = false;
             }
+        }
+
+        /// <summary>
+        /// Populates the craft files listbox with all found .craft files.
+        /// Shows missing part count next to each craft name.
+        /// </summary>
+        private void PopulateCraftFilesList()
+        {
+            CraftFilesListBox.Items.Clear();
+
+            if (m_AllCraftParts.Count == 0)
+            {
+                CraftFilesListBox.Items.Add("(No .craft files found — go build some ships!)");
+                return;
+            }
+
+            foreach (var kvp in m_AllCraftParts)
+            {
+                var craftName = kvp.Key;
+                var partCount = kvp.Value.Count;
+                var missingCount = m_MissingParts.ContainsKey(craftName) ? m_MissingParts[craftName].Count : 0;
+
+                if (missingCount > 0)
+                {
+                    CraftFilesListBox.Items.Add($"{craftName} ({partCount} parts, {missingCount} missing)");
+                }
+                else
+                {
+                    CraftFilesListBox.Items.Add($"{craftName} ({partCount} parts, OK)");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Populates the missing parts listbox based on currently selected craft files.
+        /// </summary>
+        private void PopulateMissingPartsList()
+        {
+            MissingPartsListBox.Items.Clear();
+
+            if (m_MissingParts.Count == 0)
+            {
+                MissingPartsListBox.Items.Add("(No missing parts — scan craft files first)");
+                return;
+            }
+
+            // If craft files are selected, only show missing parts for those
+            if (CraftFilesListBox.SelectedItems.Count > 0)
+            {
+                foreach (var selItem in CraftFilesListBox.SelectedItems)
+                {
+                    var craftName = selItem.ToString().Split('(')[0].Trim();
+                    if (m_MissingParts.TryGetValue(craftName, out var parts))
+                    {
+                        foreach (var part in parts)
+                        {
+                            MissingPartsListBox.Items.Add($"[{craftName}] {part}");
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // No selection: show all missing parts
+                foreach (var kvp in m_MissingParts)
+                {
+                    foreach (var part in kvp.Value)
+                    {
+                        MissingPartsListBox.Items.Add($"[{kvp.Key}] {part}");
+                    }
+                }
+            }
+
+            if (MissingPartsListBox.Items.Count == 0)
+            {
+                MissingPartsListBox.Items.Add("(No missing parts for selected craft)");
+            }
+            CraftStatusLabel.Text = $"{MissingPartsListBox.Items.Count} missing part(s) shown";
+        }
+
+        private async void ScanSelectedButton_Click(object sender, EventArgs e)
+        {
+            if (m_ScanInProgress) return;
+            if (CraftFilesListBox.SelectedItems.Count == 0)
+            {
+                CraftStatusLabel.Text = "Select one or more craft files from the list to scan";
+                return;
+            }
+
+            var gameDir = Main.Instance?.CurrentInstance?.GameDir;
+            if (gameDir == null)
+            {
+                CraftStatusLabel.Text = "Error: No game instance loaded";
+                return;
+            }
+
+            ScanSelectedButton.Enabled = false;
+            ScanShipsButton.Enabled = false;
+            CraftStatusLabel.Text = "Scanning selected craft files...";
+            m_ScanInProgress = true;
+
+            try
+            {
+                // Build list of craft names to scan
+                var selectedNames = new List<string>();
+                foreach (var selItem in CraftFilesListBox.SelectedItems)
+                {
+                    var craftName = selItem.ToString().Split('(')[0].Trim();
+                    selectedNames.Add(craftName);
+                }
+
+                // Run on background thread
+                var result = await Task.Run(() =>
+                {
+                    PartScanner.ClearCache();
+                    var missingDict = new Dictionary<string, List<string>>();
+
+                    foreach (var craftName in selectedNames)
+                    {
+                        if (m_AllCraftParts.TryGetValue(craftName, out var parts))
+                        {
+                            var missing = PartScanner.FindMissingPartsForCraft(gameDir, craftName, parts);
+                            if (missing.Count > 0)
+                            {
+                                missingDict[craftName] = missing;
+                            }
+                        }
+                    }
+
+                    return missingDict;
+                });
+
+                // Update missing parts dict (keep only what was scanned + preserve unscanned)
+                // Actually, just update the entries for selected crafts
+                foreach (var kvp in result)
+                {
+                    m_MissingParts[kvp.Key] = kvp.Value;
+                }
+                // Remove missing entries for selected crafts that no longer have missing parts
+                foreach (var craftName in selectedNames)
+                {
+                    if (!result.ContainsKey(craftName) && m_MissingParts.ContainsKey(craftName))
+                    {
+                        m_MissingParts.Remove(craftName);
+                    }
+                }
+
+                PopulateCraftFilesList();
+                PopulateMissingPartsList();
+
+                var totalMissing = m_MissingParts.Sum(kvp => kvp.Value.Count);
+                if (totalMissing == 0)
+                {
+                    CraftStatusLabel.Text = $"All parts found for selected craft files!";
+                }
+                else
+                {
+                    CraftStatusLabel.Text = $"Found {totalMissing} missing parts across selected craft files.";
+                }
+            }
+            catch (Exception ex)
+            {
+                CraftStatusLabel.Text = $"Error: {ex.Message}";
+            }
+            finally
+            {
+                ScanSelectedButton.Enabled = true;
+                ScanShipsButton.Enabled = true;
+                m_ScanInProgress = false;
+            }
+        }
+
+        private void CraftFilesListBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            PopulateMissingPartsList();
         }
 
         private List<string> GetSelectedMissingParts()
