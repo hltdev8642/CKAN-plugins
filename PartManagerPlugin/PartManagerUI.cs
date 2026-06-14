@@ -32,6 +32,8 @@ namespace PartManagerPlugin
 
         private RepositoryDataManager m_RepoData;
         private Registry m_Registry;
+        private Dictionary<string, List<string>> m_AllCraftParts = new Dictionary<string, List<string>>();
+        private Dictionary<string, List<string>> m_MissingParts = new Dictionary<string, List<string>>();
 
         private Registry GetRegistry()
         {
@@ -116,6 +118,7 @@ namespace PartManagerPlugin
         {
             LoadConfig();
             RefreshInstalledModsList();
+            UpdateStatsLabel();
         }
 
         public void OnModChanged()
@@ -273,6 +276,7 @@ namespace PartManagerPlugin
                     PartsGridView.Rows.Add(row);
                 }
             }
+            UpdateStatsLabel();
         }
 
         private void PartsGridView_CellValueChanged(object sender, DataGridViewCellEventArgs e)
@@ -310,6 +314,7 @@ namespace PartManagerPlugin
                 m_DisabledParts.Add(part.Key, part.Value);
                 Cache.MovePartToCache(part.Key);
                 SaveConfig();
+                UpdateStatsLabel();
             }
             else
             {
@@ -321,6 +326,7 @@ namespace PartManagerPlugin
                 m_DisabledParts.Remove(part.Key);
                 Cache.MovePartFromCache(part.Key);
                 SaveConfig();
+                UpdateStatsLabel();
             }
         }
 
@@ -383,19 +389,193 @@ namespace PartManagerPlugin
             InstalledModsListBox_SelectedIndexChanged(null, new EventArgs());
         }
 
+        private void UpdateStatsLabel()
+        {
+            var total = PartsGridView.Rows.Count;
+            var disabled = m_DisabledParts.Count;
+            StatsLabel.Text = $"Parts: {total} total, {disabled} disabled, {total - disabled} enabled";
+        }
+
         private void EnableAllButton_Click(object sender, EventArgs e)
         {
+            var changed = false;
             foreach (DataGridViewRow row in PartsGridView.Rows)
             {
+                var part = (KeyValuePair<string, ConfigNode>)row.Tag;
+                if (!m_DisabledParts.ContainsKey(part.Key))
+                    continue;
+
+                m_DisabledParts.Remove(part.Key);
+                Cache.MovePartFromCache(part.Key);
                 (row.Cells[0] as DataGridViewCheckBoxCell).Value = true;
+                changed = true;
+            }
+            if (changed)
+            {
+                SaveConfig();
+                UpdateStatsLabel();
+            }
+        }
+
+        private void ScanShipsButton_Click(object sender, EventArgs e)
+        {
+            var gameDir = Main.Instance?.CurrentInstance?.GameDir;
+            if (gameDir == null)
+            {
+                CraftStatusLabel.Text = "Error: No game instance loaded";
+                return;
+            }
+
+            CraftStatusLabel.Text = "Scanning craft files...";
+            Cursor = Cursors.WaitCursor;
+            ScanShipsButton.Enabled = false;
+
+            try
+            {
+                m_AllCraftParts = PartScanner.ScanAllCraftFiles(gameDir);
+                m_MissingParts = PartScanner.FindMissingParts(gameDir, m_AllCraftParts);
+
+                MissingPartsListBox.Items.Clear();
+
+                if (m_MissingParts.Count == 0)
+                {
+                    CraftStatusLabel.Text = "All parts found! No missing parts detected.";
+                    return;
+                }
+
+                var totalCraft = m_AllCraftParts.Count;
+                var totalMissing = m_MissingParts.Sum(kvp => kvp.Value.Count);
+
+                foreach (var kvp in m_MissingParts)
+                {
+                    foreach (var part in kvp.Value)
+                    {
+                        MissingPartsListBox.Items.Add($"[{kvp.Key}] {part}");
+                    }
+                }
+
+                CraftStatusLabel.Text = $"Scanned {totalCraft} craft files, found {totalMissing} missing parts across {m_MissingParts.Count} craft files.";
+            }
+            catch (Exception ex)
+            {
+                CraftStatusLabel.Text = $"Error: {ex.Message}";
+            }
+            finally
+            {
+                Cursor = Cursors.Default;
+                ScanShipsButton.Enabled = true;
+            }
+        }
+
+        private List<string> GetSelectedMissingParts()
+        {
+            var parts = new List<string>();
+            foreach (var item in MissingPartsListBox.SelectedItems)
+            {
+                var text = item as string;
+                if (text != null)
+                {
+                    // Format: "[CraftName] partName"
+                    var idx = text.IndexOf("] ");
+                    if (idx >= 0)
+                    {
+                        parts.Add(text.Substring(idx + 2));
+                    }
+                    else
+                    {
+                        parts.Add(text);
+                    }
+                }
+            }
+            return parts;
+        }
+
+        private void LookupCkanButton_Click(object sender, EventArgs e)
+        {
+            var parts = GetSelectedMissingParts();
+            if (parts.Count == 0)
+            {
+                CraftStatusLabel.Text = "Select a missing part first to look up on CKAN";
+                return;
+            }
+            foreach (var part in parts)
+            {
+                OpenUrl($"https://github.com/KSP-CKAN/CKAN/issues?q=is%3Aissue+{Uri.EscapeDataString(part)}");
+            }
+        }
+
+        private void LookupSpacedockButton_Click(object sender, EventArgs e)
+        {
+            var parts = GetSelectedMissingParts();
+            if (parts.Count == 0)
+            {
+                CraftStatusLabel.Text = "Select a missing part first to look up on Spacedock";
+                return;
+            }
+            foreach (var part in parts)
+            {
+                OpenUrl($"https://spacedock.info/search?q={Uri.EscapeDataString(part)}");
+            }
+        }
+
+        private void LookupGithubButton_Click(object sender, EventArgs e)
+        {
+            var parts = GetSelectedMissingParts();
+            if (parts.Count == 0)
+            {
+                CraftStatusLabel.Text = "Select a missing part first to look up on GitHub";
+                return;
+            }
+            foreach (var part in parts)
+            {
+                OpenUrl($"https://github.com/search?q={Uri.EscapeDataString(part)}+ksp+mod&type=repositories");
+            }
+        }
+
+        private void LookupKerbalxButton_Click(object sender, EventArgs e)
+        {
+            var parts = GetSelectedMissingParts();
+            if (parts.Count == 0)
+            {
+                CraftStatusLabel.Text = "Select a missing part first to look up on KerbalX";
+                return;
+            }
+            foreach (var part in parts)
+            {
+                OpenUrl($"https://kerbalx.com/craft?search={Uri.EscapeDataString(part)}");
+            }
+        }
+
+        private static void OpenUrl(string url)
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(url);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to open URL {url}: {ex.Message}");
             }
         }
 
         private void DisableAllButton_Click(object sender, EventArgs e)
         {
+            var changed = false;
             foreach (DataGridViewRow row in PartsGridView.Rows)
             {
+                var part = (KeyValuePair<string, ConfigNode>)row.Tag;
+                if (m_DisabledParts.ContainsKey(part.Key))
+                    continue;
+
+                m_DisabledParts.Add(part.Key, part.Value);
+                Cache.MovePartToCache(part.Key);
                 (row.Cells[0] as DataGridViewCheckBoxCell).Value = false;
+                changed = true;
+            }
+            if (changed)
+            {
+                SaveConfig();
+                UpdateStatsLabel();
             }
         }
 

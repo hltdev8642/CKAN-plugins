@@ -56,6 +56,8 @@
     <Compile Include="Cache.cs" />
     <Compile Include="ConfigNode.cs" />
     <Compile Include="ConfigNodeReader.cs" />
+    <Compile Include="CraftParser.cs" />
+    <Compile Include="PartScanner.cs" />
     <Compile Include="PartManagerUI.cs">
       <SubType>UserControl</SubType>
     </Compile>

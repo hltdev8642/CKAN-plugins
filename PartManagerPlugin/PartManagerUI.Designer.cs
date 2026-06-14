@@ -40,6 +40,15 @@
             this.PathColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.FilterTextBox = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
+            this.StatsLabel = new System.Windows.Forms.Label();
+            this.CraftGroupBox = new System.Windows.Forms.GroupBox();
+            this.ScanShipsButton = new System.Windows.Forms.Button();
+            this.MissingPartsListBox = new System.Windows.Forms.ListBox();
+            this.LookupCkanButton = new System.Windows.Forms.Button();
+            this.LookupSpacedockButton = new System.Windows.Forms.Button();
+            this.LookupGithubButton = new System.Windows.Forms.Button();
+            this.LookupKerbalxButton = new System.Windows.Forms.Button();
+            this.CraftStatusLabel = new System.Windows.Forms.Label();
             this.RegexCheckbox = new System.Windows.Forms.CheckBox();
             this.ApplyFilterButton = new System.Windows.Forms.Button();
             this.FilterTypeCombobox = new System.Windows.Forms.ComboBox();
@@ -78,12 +87,13 @@
             this.groupBox2.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.groupBox2.Controls.Add(this.StatsLabel);
             this.groupBox2.Controls.Add(this.DisableAllButton);
             this.groupBox2.Controls.Add(this.EnableAllButton);
             this.groupBox2.Controls.Add(this.PartsGridView);
             this.groupBox2.Location = new System.Drawing.Point(302, 46);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(628, 496);
+            this.groupBox2.Size = new System.Drawing.Size(628, 340);
             this.groupBox2.TabIndex = 1;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Mod parts";
@@ -91,7 +101,7 @@
             // DisableAllButton
             // 
             this.DisableAllButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.DisableAllButton.Location = new System.Drawing.Point(87, 464);
+            this.DisableAllButton.Location = new System.Drawing.Point(87, 308);
             this.DisableAllButton.Name = "DisableAllButton";
             this.DisableAllButton.Size = new System.Drawing.Size(75, 23);
             this.DisableAllButton.TabIndex = 9;
@@ -99,10 +109,20 @@
             this.DisableAllButton.UseVisualStyleBackColor = true;
             this.DisableAllButton.Click += new System.EventHandler(this.DisableAllButton_Click);
             // 
+            // StatsLabel
+            // 
+            this.StatsLabel.AutoSize = true;
+            this.StatsLabel.Location = new System.Drawing.Point(168, 313);
+            this.StatsLabel.Name = "StatsLabel";
+            this.StatsLabel.Size = new System.Drawing.Size(75, 13);
+            this.StatsLabel.TabIndex = 10;
+            this.StatsLabel.Text = "Parts: 0 total, 0 disabled";
+            this.StatsLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
             // EnableAllButton
             // 
             this.EnableAllButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.EnableAllButton.Location = new System.Drawing.Point(6, 464);
+            this.EnableAllButton.Location = new System.Drawing.Point(6, 308);
             this.EnableAllButton.Name = "EnableAllButton";
             this.EnableAllButton.Size = new System.Drawing.Size(75, 23);
             this.EnableAllButton.TabIndex = 8;
@@ -129,7 +149,7 @@
             this.PartsGridView.Location = new System.Drawing.Point(6, 19);
             this.PartsGridView.Name = "PartsGridView";
             this.PartsGridView.RowHeadersVisible = false;
-            this.PartsGridView.Size = new System.Drawing.Size(616, 439);
+            this.PartsGridView.Size = new System.Drawing.Size(616, 280);
             this.PartsGridView.TabIndex = 0;
             this.PartsGridView.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.PartsGridView_CellValueChanged);
             // 
@@ -159,6 +179,93 @@
             this.PathColumn.HeaderText = "Path";
             this.PathColumn.Name = "PathColumn";
             this.PathColumn.ReadOnly = true;
+            // 
+            // CraftGroupBox
+            // 
+            this.CraftGroupBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.CraftGroupBox.Controls.Add(this.CraftStatusLabel);
+            this.CraftGroupBox.Controls.Add(this.LookupKerbalxButton);
+            this.CraftGroupBox.Controls.Add(this.LookupGithubButton);
+            this.CraftGroupBox.Controls.Add(this.LookupSpacedockButton);
+            this.CraftGroupBox.Controls.Add(this.LookupCkanButton);
+            this.CraftGroupBox.Controls.Add(this.MissingPartsListBox);
+            this.CraftGroupBox.Controls.Add(this.ScanShipsButton);
+            this.CraftGroupBox.Location = new System.Drawing.Point(302, 392);
+            this.CraftGroupBox.Name = "CraftGroupBox";
+            this.CraftGroupBox.Size = new System.Drawing.Size(628, 150);
+            this.CraftGroupBox.TabIndex = 11;
+            this.CraftGroupBox.TabStop = false;
+            this.CraftGroupBox.Text = "Craft Scanner";
+            // 
+            // ScanShipsButton
+            // 
+            this.ScanShipsButton.Location = new System.Drawing.Point(6, 16);
+            this.ScanShipsButton.Name = "ScanShipsButton";
+            this.ScanShipsButton.Size = new System.Drawing.Size(140, 23);
+            this.ScanShipsButton.TabIndex = 0;
+            this.ScanShipsButton.Text = "Scan Ships for Missing Parts";
+            this.ScanShipsButton.UseVisualStyleBackColor = true;
+            this.ScanShipsButton.Click += new System.EventHandler(this.ScanShipsButton_Click);
+            // 
+            // MissingPartsListBox
+            // 
+            this.MissingPartsListBox.FormattingEnabled = true;
+            this.MissingPartsListBox.Location = new System.Drawing.Point(6, 45);
+            this.MissingPartsListBox.Name = "MissingPartsListBox";
+            this.MissingPartsListBox.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
+            this.MissingPartsListBox.Size = new System.Drawing.Size(460, 95);
+            this.MissingPartsListBox.TabIndex = 1;
+            // 
+            // LookupCkanButton
+            // 
+            this.LookupCkanButton.Location = new System.Drawing.Point(472, 45);
+            this.LookupCkanButton.Name = "LookupCkanButton";
+            this.LookupCkanButton.Size = new System.Drawing.Size(75, 23);
+            this.LookupCkanButton.TabIndex = 2;
+            this.LookupCkanButton.Text = "CKAN";
+            this.LookupCkanButton.UseVisualStyleBackColor = true;
+            this.LookupCkanButton.Click += new System.EventHandler(this.LookupCkanButton_Click);
+            // 
+            // LookupSpacedockButton
+            // 
+            this.LookupSpacedockButton.Location = new System.Drawing.Point(550, 45);
+            this.LookupSpacedockButton.Name = "LookupSpacedockButton";
+            this.LookupSpacedockButton.Size = new System.Drawing.Size(75, 23);
+            this.LookupSpacedockButton.TabIndex = 3;
+            this.LookupSpacedockButton.Text = "Spacedock";
+            this.LookupSpacedockButton.UseVisualStyleBackColor = true;
+            this.LookupSpacedockButton.Click += new System.EventHandler(this.LookupSpacedockButton_Click);
+            // 
+            // LookupGithubButton
+            // 
+            this.LookupGithubButton.Location = new System.Drawing.Point(472, 74);
+            this.LookupGithubButton.Name = "LookupGithubButton";
+            this.LookupGithubButton.Size = new System.Drawing.Size(75, 23);
+            this.LookupGithubButton.TabIndex = 4;
+            this.LookupGithubButton.Text = "GitHub";
+            this.LookupGithubButton.UseVisualStyleBackColor = true;
+            this.LookupGithubButton.Click += new System.EventHandler(this.LookupGithubButton_Click);
+            // 
+            // LookupKerbalxButton
+            // 
+            this.LookupKerbalxButton.Location = new System.Drawing.Point(550, 74);
+            this.LookupKerbalxButton.Name = "LookupKerbalxButton";
+            this.LookupKerbalxButton.Size = new System.Drawing.Size(75, 23);
+            this.LookupKerbalxButton.TabIndex = 5;
+            this.LookupKerbalxButton.Text = "KerbalX";
+            this.LookupKerbalxButton.UseVisualStyleBackColor = true;
+            this.LookupKerbalxButton.Click += new System.EventHandler(this.LookupKerbalxButton_Click);
+            // 
+            // CraftStatusLabel
+            // 
+            this.CraftStatusLabel.AutoSize = true;
+            this.CraftStatusLabel.Location = new System.Drawing.Point(152, 21);
+            this.CraftStatusLabel.Name = "CraftStatusLabel";
+            this.CraftStatusLabel.Size = new System.Drawing.Size(94, 13);
+            this.CraftStatusLabel.TabIndex = 6;
+            this.CraftStatusLabel.Text = "Ready (no scan yet)";
+            this.CraftStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // FilterTextBox
             // 
@@ -230,6 +337,7 @@
             this.Controls.Add(this.RegexCheckbox);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.FilterTextBox);
+            this.Controls.Add(this.CraftGroupBox);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
             this.Name = "PartManagerUI";
@@ -255,6 +363,15 @@
         private System.Windows.Forms.Button ApplyFilterButton;
         private System.Windows.Forms.ComboBox FilterTypeCombobox;
         private System.Windows.Forms.Button ClearFilterbutton;
+        private System.Windows.Forms.Label StatsLabel;
+        private System.Windows.Forms.GroupBox CraftGroupBox;
+        private System.Windows.Forms.Button ScanShipsButton;
+        private System.Windows.Forms.ListBox MissingPartsListBox;
+        private System.Windows.Forms.Button LookupCkanButton;
+        private System.Windows.Forms.Button LookupSpacedockButton;
+        private System.Windows.Forms.Button LookupGithubButton;
+        private System.Windows.Forms.Button LookupKerbalxButton;
+        private System.Windows.Forms.Label CraftStatusLabel;
         private System.Windows.Forms.DataGridViewCheckBoxColumn EnabledColumn;
         private System.Windows.Forms.DataGridViewTextBoxColumn TitleColumn;
         private System.Windows.Forms.DataGridViewTextBoxColumn PartNameColumn;
