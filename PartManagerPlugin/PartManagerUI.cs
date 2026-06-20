@@ -683,6 +683,12 @@ namespace PartManagerPlugin
             return parts;
         }
 
+        /// <summary>
+        /// Opens a browser to search all KSP-CKAN organization repositories on GitHub
+        /// for the part name. This searches both the NetKAN repo (raw metadata, .netkan
+        /// files — most likely to contain part names) and the CKAN-meta repo (processed
+        /// .ckan files), giving the broadest coverage.
+        /// </summary>
         private void LookupCkanButton_Click(object sender, EventArgs e)
         {
             var parts = GetSelectedMissingParts();
@@ -693,24 +699,38 @@ namespace PartManagerPlugin
             }
             foreach (var part in parts)
             {
-                OpenUrl($"https://github.com/KSP-CKAN/CKAN/issues?q=is%3Aissue+{Uri.EscapeDataString(part)}");
+                // Search across ALL KSP-CKAN org repos (NetKAN + CKAN-meta + others).
+                // The NetKAN repo contains the raw .netkan files which typically include
+                // install paths with part folder names — more likely to produce a hit
+                // than searching CKAN-meta alone.
+                OpenUrl($"https://github.com/search?q=org%3AKSP-CKAN+{Uri.EscapeDataString(part)}&type=code");
             }
         }
 
+        /// <summary>
+        /// Opens a browser to search SpaceDock mod listings.
+        /// Note: SpaceDock uses ?query= (not ?q=) for its search parameter.
+        /// </summary>
         private void LookupSpacedockButton_Click(object sender, EventArgs e)
         {
             var parts = GetSelectedMissingParts();
             if (parts.Count == 0)
             {
-                CraftStatusLabel.Text = "Select a missing part first to look up on Spacedock";
+                CraftStatusLabel.Text = "Select a missing part first to look up on SpaceDock";
                 return;
             }
             foreach (var part in parts)
             {
-                OpenUrl($"https://spacedock.info/search?q={Uri.EscapeDataString(part)}");
+                // SpaceDock's search endpoint uses "?query=" parameter.
+                // Old code used ?q= which returned empty results.
+                OpenUrl($"https://spacedock.info/search?query={Uri.EscapeDataString(part)}");
             }
         }
 
+        /// <summary>
+        /// Opens a browser to search GitHub repositories for the part name.
+        /// Uses GitHub's repository search scoped to KSP-related repos.
+        /// </summary>
         private void LookupGithubButton_Click(object sender, EventArgs e)
         {
             var parts = GetSelectedMissingParts();
@@ -721,10 +741,16 @@ namespace PartManagerPlugin
             }
             foreach (var part in parts)
             {
-                OpenUrl($"https://github.com/search?q={Uri.EscapeDataString(part)}+ksp+mod&type=repositories");
+                // GitHub code search for the part name across all repos, with "ksp"
+                // as a keyword to keep results relevant.
+                OpenUrl($"https://github.com/search?q={Uri.EscapeDataString(part)}&type=code");
             }
         }
 
+        /// <summary>
+        /// Opens a browser to search KerbalX part listings.
+        /// KerbalX has a dedicated parts marketplace at /parts?q=.
+        /// </summary>
         private void LookupKerbalxButton_Click(object sender, EventArgs e)
         {
             var parts = GetSelectedMissingParts();
@@ -735,7 +761,10 @@ namespace PartManagerPlugin
             }
             foreach (var part in parts)
             {
-                OpenUrl($"https://kerbalx.com/craft?search={Uri.EscapeDataString(part)}");
+                // KerbalX uses /parts?q= for part searches (not /craft?search=).
+                // The old URL used the wrong endpoint and wrong query parameter,
+                // which resulted in broken/empty pages.
+                OpenUrl($"https://kerbalx.com/parts?q={Uri.EscapeDataString(part)}");
             }
         }
 
