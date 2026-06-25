@@ -149,13 +149,15 @@ namespace PartManagerPlugin
         }
 
         /// <summary>
-        /// Scans both VAB and SPH ship directories and returns all parts used across all craft files.
-        /// Returns a dict of craft file name (without extension) -> list of part names.
-        /// Also returns the full file paths via an out parameter.
+        /// Scans VAB, SPH, and Subassemblies ship directories and returns all parts used
+        /// across all craft files. Returns a dict of craft file name (without extension) ->
+        /// list of part names. Also returns the full file paths via an out parameter.
+        /// Reports progress via optional IProgress{string} callback.
         /// </summary>
         public static Dictionary<string, List<string>> ScanAllCraftFiles(
             string gameDir,
-            out Dictionary<string, string> craftFilePaths)
+            out Dictionary<string, string> craftFilePaths,
+            IProgress<string> progress = null)
         {
             var allCraftParts = new Dictionary<string, List<string>>();
             craftFilePaths = new Dictionary<string, string>();
@@ -164,12 +166,16 @@ namespace PartManagerPlugin
             if (!Directory.Exists(shipsDir))
                 return allCraftParts;
 
-            // Scan VAB and SPH subfolders
-            foreach (var subDir in new[] { "VAB", "SPH", "SpacePlaneHangar", "VehicleAssemblyBuilding" })
+            // Scan VAB, SPH, and Subassemblies subfolders
+            var subDirs = new[] { "VAB", "SPH", "Subassemblies", "SpacePlaneHangar", "VehicleAssemblyBuilding" };
+
+            foreach (var subDir in subDirs)
             {
                 var fullPath = Path.Combine(shipsDir, subDir);
                 if (Directory.Exists(fullPath))
                 {
+                    progress?.Report($"Scanning ships/{subDir}/...");
+
                     var parts = CraftParser.GetPartsFromCraftFolder(fullPath);
                     foreach (var kvp in parts)
                     {
@@ -177,18 +183,40 @@ namespace PartManagerPlugin
                     }
 
                     // Collect file paths
-                    foreach (var craftFile in Directory.GetFiles(fullPath, "*.craft", SearchOption.AllDirectories))
+                    var craftFiles = Directory.GetFiles(fullPath, "*.craft", SearchOption.AllDirectories);
+                    if (craftFiles.Length > 0)
                     {
-                        var name = Path.GetFileNameWithoutExtension(craftFile);
-                        if (!craftFilePaths.ContainsKey(name))
+                        int fileCount = 0;
+                        foreach (var craftFile in craftFiles)
                         {
-                            craftFilePaths[name] = craftFile;
+                            fileCount++;
+                            var name = Path.GetFileNameWithoutExtension(craftFile);
+                            if (!craftFilePaths.ContainsKey(name))
+                            {
+                                craftFilePaths[name] = craftFile;
+                            }
+                            if (craftFiles.Length > 3)
+                            {
+                                progress?.Report($"Scanning ships/{subDir}/... ({fileCount}/{craftFiles.Length})");
+                            }
                         }
                     }
                 }
             }
 
+            progress?.Report($"Found {allCraftParts.Count} craft files total");
+
             return allCraftParts;
+        }
+
+        /// <summary>
+        /// Scans all craft files (overload without progress).
+        /// </summary>
+        public static Dictionary<string, List<string>> ScanAllCraftFiles(
+            string gameDir,
+            out Dictionary<string, string> craftFilePaths)
+        {
+            return ScanAllCraftFiles(gameDir, out craftFilePaths, null);
         }
 
         /// <summary>
@@ -197,7 +225,7 @@ namespace PartManagerPlugin
         public static Dictionary<string, List<string>> ScanAllCraftFiles(string gameDir)
         {
             Dictionary<string, string> paths;
-            return ScanAllCraftFiles(gameDir, out paths);
+            return ScanAllCraftFiles(gameDir, out paths, null);
         }
     }
 }

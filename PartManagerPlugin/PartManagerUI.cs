@@ -431,10 +431,15 @@ namespace PartManagerPlugin
                 return;
             }
 
-            CraftStatusLabel.Text = "Scanning craft files...";
             ScanShipsButton.Enabled = false;
             ScanSelectedButton.Enabled = false;
             m_ScanInProgress = true;
+
+            // Progress reporter that marshals to UI thread
+            IProgress<string> progress = new Progress<string>(status =>
+            {
+                CraftStatusLabel.Text = status;
+            });
 
             try
             {
@@ -444,7 +449,7 @@ namespace PartManagerPlugin
                     // Clear cache so we get fresh GameData scan
                     PartScanner.ClearCache();
 
-                    var allParts = PartScanner.ScanAllCraftFiles(gameDir, out var filePaths);
+                    var allParts = PartScanner.ScanAllCraftFiles(gameDir, out var filePaths, progress);
                     var missing = PartScanner.FindMissingParts(gameDir, allParts);
                     return new { allParts, missing, filePaths };
                 });
@@ -462,15 +467,15 @@ namespace PartManagerPlugin
 
                 if (totalCraft == 0)
                 {
-                    CraftStatusLabel.Text = "No .craft files found in ships/VAB/ or ships/SPH/. Build some ships in KSP first!";
+                    CraftStatusLabel.Text = "No .craft files found in ships/ folders. Build some ships in KSP first!";
                 }
                 else if (totalMissing == 0)
                 {
-                    CraftStatusLabel.Text = $"All parts found! Scanned {totalCraft} craft files, no missing parts detected.";
+                    CraftStatusLabel.Text = $"All parts found! Scanned {totalCraft} craft files (VAB/SPH/Subassemblies), no missing parts detected.";
                 }
                 else
                 {
-                    CraftStatusLabel.Text = $"Scanned {totalCraft} craft files, found {totalMissing} missing parts across {m_MissingParts.Count} craft files.";
+                    CraftStatusLabel.Text = $"Scanned {totalCraft} craft files (VAB/SPH/Subassemblies), found {totalMissing} missing parts across {m_MissingParts.Count} craft files.";
                 }
             }
             catch (Exception ex)
@@ -581,8 +586,12 @@ namespace PartManagerPlugin
 
             ScanSelectedButton.Enabled = false;
             ScanShipsButton.Enabled = false;
-            CraftStatusLabel.Text = "Scanning selected craft files...";
             m_ScanInProgress = true;
+
+            IProgress<string> progress = new Progress<string>(status =>
+            {
+                CraftStatusLabel.Text = status;
+            });
 
             try
             {
@@ -594,14 +603,21 @@ namespace PartManagerPlugin
                     selectedNames.Add(craftName);
                 }
 
+                progress.Report($"Scanning {selectedNames.Count} selected craft files...");
+
                 // Run on background thread
                 var result = await Task.Run(() =>
                 {
                     PartScanner.ClearCache();
                     var missingDict = new Dictionary<string, List<string>>();
+                    int current = 0;
+                    int total = selectedNames.Count;
 
                     foreach (var craftName in selectedNames)
                     {
+                        current++;
+                        progress.Report($"Scanning {craftName}... ({current}/{total})");
+
                         if (m_AllCraftParts.TryGetValue(craftName, out var parts))
                         {
                             var missing = PartScanner.FindMissingPartsForCraft(gameDir, craftName, parts);
@@ -615,8 +631,7 @@ namespace PartManagerPlugin
                     return missingDict;
                 });
 
-                // Update missing parts dict (keep only what was scanned + preserve unscanned)
-                // Actually, just update the entries for selected crafts
+                // Update missing parts dict for selected crafts
                 foreach (var kvp in result)
                 {
                     m_MissingParts[kvp.Key] = kvp.Value;
@@ -748,8 +763,9 @@ namespace PartManagerPlugin
         }
 
         /// <summary>
-        /// Opens a browser to search KerbalX part listings.
-        /// KerbalX has a dedicated parts marketplace at /parts?q=.
+        /// Copies the selected part name(s) to clipboard and opens KerbalX parts page.
+        /// KerbalX's search query parameter wasn't working reliably, so we let the user
+        /// paste the part name directly on the site.
         /// </summary>
         private void LookupKerbalxButton_Click(object sender, EventArgs e)
         {
@@ -759,13 +775,19 @@ namespace PartManagerPlugin
                 CraftStatusLabel.Text = "Select a missing part first to look up on KerbalX";
                 return;
             }
-            foreach (var part in parts)
+
+            // Copy part name(s) to clipboard
+            var text = parts.Count == 1 ? parts[0] : string.Join(", ", parts);
+            try
             {
-                // KerbalX uses /parts?q= for part searches (not /craft?search=).
-                // The old URL used the wrong endpoint and wrong query parameter,
-                // which resulted in broken/empty pages.
-                OpenUrl($"https://kerbalx.com/parts?q={Uri.EscapeDataString(part)}");
+                Clipboard.SetText(text);
             }
+            catch { }
+
+            // Open KerbalX parts page
+            OpenUrl("https://kerbalx.com/parts");
+
+            CraftStatusLabel.Text = $"Part name '{text}' copied to clipboard. KerbalX parts page opened.";
         }
 
         private static void OpenUrl(string url)
@@ -778,6 +800,147 @@ namespace PartManagerPlugin
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to open URL {url}: {ex.Message}");
             }
+        }
+
+        private void CopyMissingPartButton_Click(object sender, EventArgs e)
+        {
+            var parts = GetSelectedMissingParts();
+            if (parts.Count == 0)
+            {
+                CraftStatusLabel.Text = "Select a missing part first to copy its name";
+                return;
+            }
+
+            var text = string.Join(Environment.NewLine, parts);
+            try
+            {
+                Clipboard.SetText(text);
+                CraftStatusLabel.Text = $"Copied {parts.Count} part name(s) to clipboard";
+            }
+            catch (Exception ex)
+            {
+                CraftStatusLabel.Text = $"Failed to copy to clipboard: {ex.Message}";
+            }
+        }
+
+        private void ExportReportButton_Click(object sender, EventArgs e)
+        {
+            if (m_MissingParts.Count == 0 && m_AllCraftParts.Count == 0)
+            {
+                CraftStatusLabel.Text = "No scan results to export. Run a scan first.";
+                return;
+            }
+
+            using (var dialog = new SaveFileDialog())
+            {
+                dialog.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+                dialog.DefaultExt = "txt";
+                dialog.FileName = $"CraftScanReport_{DateTime.Now:yyyy-MM-dd_HH-mm}.txt";
+                dialog.Title = "Export Craft Scan Report";
+
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        using (var writer = new StreamWriter(dialog.FileName))
+                        {
+                            writer.WriteLine("KSP Craft File Scan Report");
+                            writer.WriteLine($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm}");
+                            writer.WriteLine($"Total craft files scanned: {m_AllCraftParts.Count}");
+                            writer.WriteLine($"Total craft files with missing parts: {m_MissingParts.Count}");
+                            writer.WriteLine(new string('-', 60));
+                            writer.WriteLine();
+
+                            foreach (var kvp in m_AllCraftParts)
+                            {
+                                var craftName = kvp.Key;
+                                var partCount = kvp.Value.Count;
+                                var missingCount = m_MissingParts.ContainsKey(craftName) ? m_MissingParts[craftName].Count : 0;
+
+                                writer.WriteLine($"Craft: {craftName}");
+                                writer.WriteLine($"  Parts: {partCount}, Missing: {missingCount}");
+
+                                if (missingCount > 0)
+                                {
+                                    writer.WriteLine("  Missing parts:");
+                                    foreach (var missingPart in m_MissingParts[craftName])
+                                    {
+                                        writer.WriteLine($"    - {missingPart}");
+                                    }
+                                }
+                                writer.WriteLine();
+                            }
+                        }
+
+                        CraftStatusLabel.Text = $"Report exported to: {dialog.FileName}";
+                    }
+                    catch (Exception ex)
+                    {
+                        CraftStatusLabel.Text = $"Error exporting report: {ex.Message}";
+                    }
+                }
+            }
+        }
+
+        private void FindModButton_Click(object sender, EventArgs e)
+        {
+            var parts = GetSelectedMissingParts();
+            if (parts.Count == 0)
+            {
+                CraftStatusLabel.Text = "Select a missing part first to find its mod";
+                return;
+            }
+
+            foreach (var part in parts)
+            {
+                var suggestion = FindModForMissingPart(part);
+                if (suggestion != null)
+                {
+                    CraftStatusLabel.Text = $"Part '{part}' may be provided by installed mod: {suggestion}";
+                }
+                else
+                {
+                    CraftStatusLabel.Text = $"Part '{part}' not matched to any installed mod. Try CKAN search.";
+                }
+            }
+        }
+
+        /// <summary>
+        /// Searches the CKAN registry for an installed mod that might provide the missing part.
+        /// Checks both the file paths within each mod and the mod's identifier for a match.
+        /// </summary>
+        private string FindModForMissingPart(string partName)
+        {
+            try
+            {
+                var registry = GetRegistry();
+                if (registry == null) return null;
+
+                // Check installed modules' file lists for a match
+                foreach (var mod in registry.InstalledModules)
+                {
+                    // Check if the part name is contained in any file path
+                    foreach (var file in mod.Files)
+                    {
+                        if (file.IndexOf(partName, StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            return mod.identifier;
+                        }
+                    }
+
+                    // Check if the mod identifier relates to the part name
+                    if (mod.identifier.IndexOf(partName, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        partName.IndexOf(mod.identifier, StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        return mod.identifier;
+                    }
+                }
+            }
+            catch
+            {
+                // Registry access may fail
+            }
+            return null;
         }
 
         private void DisableAllButton_Click(object sender, EventArgs e)

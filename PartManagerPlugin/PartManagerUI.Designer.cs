@@ -57,6 +57,9 @@
             this.ScanSelectedButton = new System.Windows.Forms.Button();
             this.CraftFileLabel = new System.Windows.Forms.Label();
             this.MissingPartLabel = new System.Windows.Forms.Label();
+            this.CopyMissingPartButton = new System.Windows.Forms.Button();
+            this.FindModButton = new System.Windows.Forms.Button();
+            this.ExportReportButton = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.PartsGridView)).BeginInit();
@@ -199,6 +202,9 @@
             this.CraftGroupBox.Controls.Add(this.CraftFilesListBox);
             this.CraftGroupBox.Controls.Add(this.ScanSelectedButton);
             this.CraftGroupBox.Controls.Add(this.ScanShipsButton);
+            this.CraftGroupBox.Controls.Add(this.CopyMissingPartButton);
+            this.CraftGroupBox.Controls.Add(this.FindModButton);
+            this.CraftGroupBox.Controls.Add(this.ExportReportButton);
             this.CraftGroupBox.Location = new System.Drawing.Point(302, 392);
             this.CraftGroupBox.Name = "CraftGroupBox";
             this.CraftGroupBox.Size = new System.Drawing.Size(628, 175);
@@ -375,6 +381,36 @@
             this.ClearFilterbutton.UseVisualStyleBackColor = true;
             this.ClearFilterbutton.Click += new System.EventHandler(this.ClearFilterbutton_Click);
             // 
+            // CopyMissingPartButton
+            // 
+            this.CopyMissingPartButton.Location = new System.Drawing.Point(470, 144);
+            this.CopyMissingPartButton.Name = "CopyMissingPartButton";
+            this.CopyMissingPartButton.Size = new System.Drawing.Size(100, 23);
+            this.CopyMissingPartButton.TabIndex = 14;
+            this.CopyMissingPartButton.Text = "Copy Part Name";
+            this.CopyMissingPartButton.UseVisualStyleBackColor = true;
+            this.CopyMissingPartButton.Click += new System.EventHandler(this.CopyMissingPartButton_Click);
+            // 
+            // FindModButton
+            // 
+            this.FindModButton.Location = new System.Drawing.Point(112, 144);
+            this.FindModButton.Name = "FindModButton";
+            this.FindModButton.Size = new System.Drawing.Size(100, 23);
+            this.FindModButton.TabIndex = 15;
+            this.FindModButton.Text = "Find Mod (CKAN)";
+            this.FindModButton.UseVisualStyleBackColor = true;
+            this.FindModButton.Click += new System.EventHandler(this.FindModButton_Click);
+            // 
+            // ExportReportButton
+            // 
+            this.ExportReportButton.Location = new System.Drawing.Point(6, 144);
+            this.ExportReportButton.Name = "ExportReportButton";
+            this.ExportReportButton.Size = new System.Drawing.Size(100, 23);
+            this.ExportReportButton.TabIndex = 16;
+            this.ExportReportButton.Text = "Export Report";
+            this.ExportReportButton.UseVisualStyleBackColor = true;
+            this.ExportReportButton.Click += new System.EventHandler(this.ExportReportButton_Click);
+            // 
             // PartManagerUI
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -419,6 +455,9 @@
         private System.Windows.Forms.Button LookupSpacedockButton;
         private System.Windows.Forms.Button LookupGithubButton;
         private System.Windows.Forms.Button LookupKerbalxButton;
+        private System.Windows.Forms.Button CopyMissingPartButton;
+        private System.Windows.Forms.Button FindModButton;
+        private System.Windows.Forms.Button ExportReportButton;
         private System.Windows.Forms.Label CraftStatusLabel;
         private System.Windows.Forms.ListBox CraftFilesListBox;
         private System.Windows.Forms.Button ScanSelectedButton;
